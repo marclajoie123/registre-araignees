@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'">
+<!-- Registre des araignées, version autonome. Aucune donnée n'est envoyée : tout reste dans votre navigateur. Seule dépendance : jsPDF 2.5.1 (licence MIT), vérifiée par son empreinte SRI. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registre des araignées</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+:root{
+  --paper:#F6F8F7; --surface:#FFFFFF; --ink:#1D2327; --muted:#5B676D; --line:#D6DDDD;
+  --accent:#2B686D; --accent-ink:#FFFFFF; --accent-soft:#E2EFEE; --warn:#9A3B1B; --warn-soft:#F8E9E3;
+  --stage:#E9EFEE;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131719; --surface:#1B2124; --ink:#E5EAEC; --muted:#9AA6AC; --line:#2F383C;
+    --accent:#7EC0C1; --accent-ink:#0E1B1C; --accent-soft:#1E3334; --warn:#F0A07C; --warn-soft:#3A2419;
+    --stage:#0F1315;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131719; --surface:#1B2124; --ink:#E5EAEC; --muted:#9AA6AC; --line:#2F383C;
+  --accent:#7EC0C1; --accent-ink:#0E1B1C; --accent-soft:#1E3334; --warn:#F0A07C; --warn-soft:#3A2419;
+  --stage:#0F1315;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+header.top{border-bottom:1px solid var(--line);background:var(--surface)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-top:18px}
+.brand h1{margin:0;font-size:1.5rem;line-height:1.2;letter-spacing:-.01em}
+.brand p{margin:2px 0 14px;color:var(--muted);font-size:.95rem}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px 11px;cursor:pointer;color:var(--muted);white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:700}
+.count{display:inline-block;min-width:1.5em;padding:0 .4em;margin-left:.35em;border-radius:1em;background:var(--accent);color:var(--accent-ink);font-size:.8rem;text-align:center;font-weight:700}
+#banner:empty{display:none}
+#banner{background:var(--warn-soft);color:var(--ink);border-bottom:1px solid var(--line)}
+#banner .wrap{padding-top:10px;padding-bottom:10px;font-size:.93rem}
+main{padding:24px 0 64px}
+h2{font-size:1.25rem;margin:0 0 4px}
+h3{font-size:1rem;margin:0 0 8px}
+.hint{color:var(--muted);margin:0 0 18px;font-size:.95rem}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.danger{color:var(--warn);border-color:var(--warn)}
+.btn:disabled{opacity:.5;cursor:default}
+.link{background:none;border:0;padding:4px 6px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-size:.92rem}
+.link.danger{color:var(--warn)}
+
+/* list */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
+.toolbar input[type=search]{flex:1 1 220px;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:8px 12px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700}
+.rows{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:150px 1fr 1fr auto;gap:6px 18px;padding:14px 4px;border-bottom:1px solid var(--line);align-items:start}
+.row .no{font-weight:700;font-variant-numeric:tabular-nums}
+.row .meta{color:var(--muted);font-size:.9rem}
+.row .taxon i{font-style:italic}
+.chip{display:inline-block;font-size:.8rem;padding:1px 8px;border-radius:1em;border:1px solid var(--line);margin:2px 4px 0 0;color:var(--muted)}
+.chip.todo{border-color:var(--warn);color:var(--warn)}
+.chip.q{border-color:var(--accent);color:var(--accent)}
+.row .acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px}
+.empty{padding:40px 8px;color:var(--muted);text-align:center}
+@media (max-width:760px){
+  .row{grid-template-columns:1fr}
+  .row .acts{justify-content:flex-start}
+}
+
+/* editor */
+.editor{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:28px;align-items:start}
+@media (max-width:960px){.editor{grid-template-columns:1fr}.stage{position:static!important}}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px 14px}
+.f{display:flex;flex-direction:column;gap:4px;grid-column:span 6;min-width:0}
+.f.s3{grid-column:span 3}.f.s2{grid-column:span 2}.f.s4{grid-column:span 4}
+@media (max-width:560px){.f.s3,.f.s2,.f.s4{grid-column:span 6}}
+.f>span{font-size:.88rem;font-weight:700}
+.f small{color:var(--muted);font-size:.82rem}
+.f input,.f select,.f textarea{padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--surface);width:100%}
+.f textarea{min-height:70px;resize:vertical}
+.check{display:flex;gap:8px;align-items:center;grid-column:span 6;font-size:.95rem}
+.recap{background:var(--accent-soft);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.95rem}
+.formacts{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;grid-column:span 6}
+.stage{position:sticky;top:16px;background:var(--stage);border-radius:10px;padding:18px}
+.stage .mag{overflow-x:auto;padding:6px 0}
+.scalebar{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin:6px 0 16px}
+.scalebar i{display:block;height:6px;border:2px solid var(--muted);border-top:0}
+.real{display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--muted)}
+.warns{list-style:none;padding:0;margin:14px 0 0;font-size:.88rem}
+.warns li{padding:4px 0 4px 12px;border-left:3px solid var(--warn);margin-bottom:6px}
+.warns li.ok{border-left-color:var(--accent);color:var(--muted)}
+.err{color:var(--warn);font-weight:700;margin-top:10px}
+
+/* label (always paper + carbon black) */
+.lbl{position:relative;background:#fff;color:#000;font-family:Helvetica,Arial,sans-serif;overflow:hidden;flex:none}
+.lbl.b{box-shadow:inset 0 0 0 1px #000}
+.lbl.solo{box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.lbl.solo.b{box-shadow:inset 0 0 0 1px #000,0 1px 3px rgba(0,0,0,.25)}
+.lbl .ln{position:absolute;white-space:nowrap;overflow:hidden}
+.lbl .ln i{font-style:italic}
+.lbl .ln .r{position:absolute;right:0;top:0;font-weight:700}
+.lbl.over{outline:2px solid #C0391B;outline-offset:1px}
+
+/* sheet */
+.sheet{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:960px){.sheet{grid-template-columns:1fr}}
+.qlist{list-style:none;padding:0;margin:14px 0}
+.qlist li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.qlist .k{font-size:.85rem;color:var(--muted)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.opts .f{grid-column:auto}
+.pages{display:flex;flex-direction:column;gap:22px;overflow-x:auto}
+.page{position:relative;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);flex:none}
+.page .cell{position:absolute}
+.page .skip{position:absolute;background:repeating-linear-gradient(45deg,#eee 0 3px,#fff 3px 6px)}
+.pagecap{font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.tips{font-size:.9rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:12px;margin-top:18px}
+.done{background:var(--accent-soft);border-radius:8px;padding:12px 14px;margin-top:14px}
+
+/* settings */
+.settings{max-width:720px}
+.settings section{margin-bottom:34px}
+
+.btn.quiet{border-color:transparent;background:none;color:var(--muted)}
+.slot{font-size:.88rem;color:var(--muted);margin:10px 0 0;grid-column:span 6}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.lbl .ln b{font-weight:700}
+.lbl .ln .r{font-weight:400}
+.lbl .sym{font-family:"Segoe UI Symbol","Apple Symbols","DejaVu Sans",sans-serif}
+.cardview{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:960px){.cardview{grid-template-columns:1fr}}
+.cardview .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.cardview .opts .f,.cardview .opts .check{grid-column:auto}
+.cardview .tips p{margin:0 0 10px}
+.card-sheet{position:relative;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);margin:30px auto 0}
+.slot-cell{position:absolute;border:1px dashed #9aa4a8;background:#fff;color:#6b777c;font:12px/1 system-ui,sans-serif;cursor:pointer;padding:0}
+.slot-cell.used{background:repeating-linear-gradient(45deg,#dfe4e5 0 4px,#f3f5f5 4px 8px);border-style:solid;color:transparent}
+.slot-cell.next{border:2px solid #2B686D;background:#E2EFEE;color:#1d4a4e;font-weight:700}
+.slot-cell:hover{border-color:#2B686D}
+.feed{position:absolute;left:0;right:0;top:-22px;text-align:center;font-size:.8rem;color:var(--muted)}
+
+.card-sheet .area{position:absolute;border:1px dashed #c3cbcd;pointer-events:none}
+.f.s6{grid-column:span 6}
+.printon{grid-column:span 6;max-width:320px;margin-top:14px}
+.stage h3 .dim{font-weight:400;color:var(--muted);font-size:.88rem;margin-left:6px}
+.slot-cell.used{cursor:pointer}
+
+#banner.info{background:var(--accent-soft)}
+#banner .link{padding:0 4px}
+[hidden]{display:none!important}
+.check.s2{grid-column:span 2}
+@media (max-width:560px){.check.s2{grid-column:span 6}}
+details.more{grid-column:span 6;border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
+details.more summary{cursor:pointer;font-weight:700;margin-bottom:12px}
+details.more summary small{font-weight:400;color:var(--muted)}
+.checks{display:flex;flex-wrap:wrap;gap:6px 20px;padding-top:4px}
+.checks label{display:flex;gap:6px;align-items:center;font-weight:400}
+.about h3{margin:22px 0 6px}
+.about p{margin:0 0 10px;max-width:70ch}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;word-break:break-all;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:6px;font-size:.93rem;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Registre des araignées</h1>
+      <p>Étiquettes de récolte et d'identification, 35 × 15 mm</p>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+  </div>
+</header>
+<div id="banner"></div>
+<main><div class="wrap" id="app"><div class="loading">Ouverture du registre…</div></div></main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const { jsPDF } = window.jspdf;
+const PAD_X = 1.2, PAD_Y = 0.9, MIN_PT = 3.5, CARD_MARGIN = 5, GAP_RIGHT = 1.5;
+const MMPX = 96 / 25.4;
+const measurer = new jsPDF({ unit: "mm" });
+
+const VIALS = { "10": { name: "Flacon 10 ml", w: 35 }, "4": { name: "Flacon 4 ml", w: 30 }, "2": { name: "Flacon 2 ml", w: 22 } };
+const CARDS = {
+  "4x6":   { name: "10 × 15 cm (4 × 6 po)", W: 101.6, H: 152.4 },
+  "a6":    { name: "A6 (10,5 × 14,8 cm)", W: 105, H: 148 },
+  "5x7":   { name: "13 × 18 cm (5 × 7 po)", W: 127, H: 177.8 },
+  "letter":{ name: "Lettre (8,5 × 11 po)", W: 215.9, H: 279.4 },
+};
+const DEFAULTS = { prefix: "#", pays: "CANADA: Québec.", leg: "", det: "", dateFormat: "roman", detYearOnly: true,
+  showFamily: false, flacon: "10", wrapMin: 4, capPt: "auto", capMinH: 15, gap: 3, printSample: false, alcoolMonths: 12, card: "4x6", fillOrder: "bottom", copies: 1, border: true, maxPt: 6, usedBy: {} };
+const CAP_SIZES = [8, 7.5, 7, 6.5, 6, 5.5, 5, 4.5, 4];
+const MOYENS = ["Piège-fosse", "Piège-fosse hivernal", "Battoir", "Battoir pyramidal", "Filet-fauchoir", "Piège-intercepteur", "Tamisage et extraction", "Récolte à la main", "Vaporisation", "Aspirateur"];
+const TRAPS = ["Piège-fosse", "Piège-fosse hivernal", "Piège-intercepteur"];
+const isTrap = m => TRAPS.includes(m);
+const EFFORT_UNITS = m => isTrap(m) ? ["pièges"]
+  : (["Battoir", "Battoir pyramidal", "Filet-fauchoir"].includes(m) ? ["minutes", "plantes", "coups"]
+  : (m === "Tamisage et extraction" ? ["m² de litière", "litres", "minutes"] : ["minutes"]));
+const TRAP_LIQUIDS = ["", "Eau savonneuse", "Propylène glycol", "Éthylène glycol", "Autre"];
+const PROTOCOLES = ["", "CPAD", "Coddington et al. (1991)", "Autre"];
+const STADES = ["", "Adulte", "Subadulte", "Juvénile", "Indéterminé"];
+const CONSERVATIONS = ["Éthanol 70 %", "Éthanol 100 % (congélation -80 °C)", "Éthanol 70 % + glycérine 3-5 %", "Autre"];
+const MICROHABS = ["sous les pierres", "sous les bûches", "sous les écorces", "litière", "végétation basse", "végétation haute", "au sol"];
+const FAMILLES = ["Agelenidae","Amaurobiidae","Anyphaenidae","Araneidae","Cheiracanthiidae","Clubionidae","Cybaeidae","Dictynidae","Gnaphosidae","Hahniidae","Linyphiidae","Liocranidae","Lycosidae","Mimetidae","Oxyopidae","Philodromidae","Pholcidae","Pisauridae","Salticidae","Tetragnathidae","Theridiidae","Thomisidae","Titanoecidae","Uloboridae"];
+const SEXES = [["","—"],["m","mâle ♂"],["f","femelle ♀"],["ms","mâle subadulte"],["fs","femelle subadulte"],["juv","juvénile"],["ind","indéterminé"]];
+const ROM = ["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii"];
+const CAP_NAMES = ["Pays et région", "Localité et coordonnées", "Date, méthode et microhabitat", "Habitat", "Récolteur et numéro"];
+const ID_NAMES = ["Genre", "Espèce, auteur et nombre", "Famille", "Déterminateur"];
+
+const state = {
+  ready: false, view: "list", mode: null, editing: null, isNew: false, noTouched: false,
+  specimens: [], settings: { ...DEFAULTS }, filter: "all", search: "", confirmDelete: null, undo: null, busy: false,
+};
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const newId = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clean = o => JSON.parse(JSON.stringify(o));
+const num = v => { if (v == null || v === "") return null; const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : null; };
+const join = (arr, sep) => arr.filter(x => x && String(x).trim()).join(sep);
+const fr = n => String(Math.round(n * 10) / 10).replace(".", ",");
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 3800); }
+
+/* ---------- formatting ---------- */
+function fmtDate(iso, f){
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  if (f === "iso") return iso;
+  if (f === "ROMAN") return `${d}.${ROM[m-1].toUpperCase()}.${y}`;
+  return `${d}.${ROM[m-1]}.${y}`;
+}
+function fmtRange(a, b, f){
+  if (!a || !b || a === b) return fmtDate(b || a, f);
+  if (f === "iso") return `${a}/${b}`;
+  const [y1, m1, d1] = a.split("-").map(Number), [y2, m2, d2] = b.split("-").map(Number);
+  if (!y1 || !y2) return fmtDate(b, f);
+  const R = m => f === "ROMAN" ? ROM[m-1].toUpperCase() : ROM[m-1];
+  if (y1 === y2 && m1 === m2) return `${d1}-${d2}.${R(m2)}.${y2}`;
+  if (y1 === y2) return `${d1}.${R(m1)}-${d2}.${R(m2)}.${y2}`;
+  return `${fmtDate(a, f)}-${fmtDate(b, f)}`;
+}
+const fmtLong = iso => { if (!iso) return ""; const d = new Date(iso + "T12:00"); return isNaN(d) ? iso : d.toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" }); };
+function fmtCoords(lat, lon, alt){
+  const a = num(lat), b = num(lon);
+  if (a == null || b == null) return "";
+  const al = num(alt);
+  return `(${a >= 0 ? "N" : "S"}${a.toFixed(4)}, ${b < 0 ? "W" : "E"}${b.toFixed(4)}${al != null ? `, ${Math.round(al)} m` : ""})`;
+}
+function sexeSegs(s){
+  if (!s.sexe) return [];
+  const n = Math.max(1, parseInt(s.nombre, 10) || 1);
+  switch (s.sexe){
+    case "m": return [{ t: ` ${n}` }, { sym: "m" }];
+    case "f": return [{ t: ` ${n}` }, { sym: "f" }];
+    case "ms": return [{ t: ` ${n} subad.` }, { sym: "m" }];
+    case "fs": return [{ t: ` ${n} subad.` }, { sym: "f" }];
+    case "juv": return [{ t: ` ${n} juv.` }];
+    default: return [{ t: ` ${n} indét.` }];
+  }
+}
+const sexeText = s => sexeSegs(s).map(g => g.sym ? (g.sym === "m" ? "♂" : "♀") : g.t).join("").trim();
+function pdfSafe(t){
+  return String(t ?? "").replace(/[‘’ʼ]/g, "'").replace(/[“”«»]/g, '"').replace(/[–—]/g, "-").replace(/[^\x20-\xFF]/g, "?");
+}
+const vialOf = s => VIALS[s.flacon] ? s.flacon : (VIALS[state.settings.flacon] ? state.settings.flacon : "10");
+
+/* ---------- label content (modèle Paquin, fig. 27-28) ---------- */
+function captureLines(s){
+  const st = state.settings;
+  return [
+    { segs: [{ t: join([s.pays, s.region], " ") }] },
+    { segs: [{ t: join([s.localite, fmtCoords(s.lat, s.lon, s.alt)], " ") }] },
+    { segs: [{ t: join([fmtRange(isTrap(s.moyen) ? s.datePose : "", s.dateCapture, st.dateFormat), join([s.moyen ? s.moyen + (s.nuit ? " (nuit)" : "") : "", s.microhab], ", ")], "; ") }] },
+    { segs: [{ t: s.milieu || "" }] },
+    { segs: [{ t: s.leg || "" }], right: { t: join([st.printSample && s.echantillon ? s.echantillon : "", s.no], " ") } },
+  ];
+}
+function identLines(s){
+  const st = state.settings;
+  const big = Math.min(Number(st.maxPt) + 1.5, 7.5);
+  const l2 = [];
+  if (s.espece){ l2.push({ t: s.espece, st: "bolditalic" }); if (s.auteur) l2.push({ t: " " + s.auteur }); }
+  else if (s.genre) l2.push({ t: "sp." });
+  l2.push(...sexeSegs(s));
+  const detDate = s.dateDet ? (st.detYearOnly ? s.dateDet.slice(0, 4) : fmtDate(s.dateDet, st.dateFormat)) : "";
+  return [
+    { segs: [s.genre ? { t: s.genre, st: "bolditalic" } : { t: s.famille || "", st: "bold" }], max: big, wrapMin: big - 2 },
+    { segs: l2, max: big, wrapMin: big - 2 },
+    { segs: [{ t: st.showFamily && s.genre ? (s.famille || "") : "" }] },
+    { segs: [{ t: s.det ? join(["Dét. " + s.det, detDate], " ") : detDate }] },
+  ];
+}
+
+/* ---------- measuring, wrapping, layout ---------- */
+function partWidth(g, pt){
+  const em = pt * 25.4 / 72;
+  if (g.sym) return em * (g.sym === "m" ? 0.8 : 0.56);
+  if (!g.t) return 0;
+  measurer.setFont("helvetica", g.st || "normal");
+  measurer.setFontSize(pt);
+  return measurer.getTextWidth(pdfSafe(g.t));
+}
+function tokenize(segs){
+  const toks = [];
+  for (const g of segs){
+    if (g.sym){ if (toks.length) toks[toks.length - 1].parts.push(g); else toks.push({ parts: [g] }); continue; }
+    if (!g.t) continue;
+    const re = /(\s*)(\S+)/g; let m;
+    while ((m = re.exec(g.t))){
+      if (m.index === 0 && m[1] === "" && toks.length) toks[toks.length - 1].parts.push({ t: m[2], st: g.st });
+      else toks.push({ parts: [{ t: m[2], st: g.st }] });
+    }
+  }
+  return toks;
+}
+const tokWidth = (tok, pt) => tok.parts.reduce((a, g) => a + partWidth(g, pt), 0);
+function wrap(toks, pt, avail, right){
+  const sp = partWidth({ t: " " }, pt);
+  const lines = []; let cur = [], w = 0;
+  for (const tok of toks){
+    const tw = tokWidth(tok, pt);
+    if (tw > avail + 1e-6) return null;
+    if (cur.length && w + sp + tw > avail + 1e-6){ lines.push(cur); cur = [tok]; w = tw; }
+    else { w += (cur.length ? sp : 0) + tw; cur.push(tok); }
+  }
+  if (cur.length) lines.push(cur);
+  let rightAlone = false;
+  if (right){
+    const rw = partWidth(right, pt);
+    if (rw > avail + 1e-6) return null;
+    const lastW = lines.length ? lines[lines.length - 1].reduce((a, t, i) => a + (i ? sp : 0) + tokWidth(t, pt), 0) : 0;
+    if (lines.length && lastW + GAP_RIGHT + rw > avail + 1e-6){ lines.push([]); rightAlone = true; }
+    if (!lines.length) lines.push([]);
+  }
+  return { lines, rightAlone };
+}
+function fitLogical(line, avail, forcePt){
+  const st = state.settings;
+  if (forcePt){
+    const toks0 = tokenize(line.segs), right0 = line.right && line.right.t ? { t: line.right.t } : null;
+    if (!toks0.length && !right0) return null;
+    const r = wrap(toks0, forcePt, avail, right0);
+    return r ? { pt: forcePt, lines: r.lines, right: right0, overflow: false } : { pt: forcePt, lines: [toks0], right: right0, overflow: true };
+  }
+  const maxPt = line.max || Number(st.maxPt);
+  const wrapMin = Math.max(MIN_PT, Math.min(maxPt, line.wrapMin || Number(st.wrapMin) || 4));
+  const toks = tokenize(line.segs);
+  const right = line.right && line.right.t ? { t: line.right.t } : null;
+  if (!toks.length && !right) return null;
+  for (let n = 1; n <= 4; n++){
+    for (let pt = maxPt; pt >= wrapMin - 1e-9; pt -= 0.25){
+      const r = wrap(toks, pt, avail, right);
+      if (r && r.lines.length <= n) return { pt, lines: r.lines, right, overflow: false };
+    }
+  }
+  for (let pt = wrapMin - 0.25; pt >= MIN_PT - 1e-9; pt -= 0.25){
+    const r = wrap(toks, pt, avail, right);
+    if (r && r.lines.length <= 4) return { pt, lines: r.lines, right, overflow: false };
+  }
+  return { pt: MIN_PT, lines: [toks], right, overflow: true };
+}
+function layoutLabel(item, forcePt){
+  const s = item.s, w = VIALS[vialOf(s)].w, avail = w - 2 * PAD_X;
+  const capPt = item.kind === "ident" ? null : (forcePt || resolveCapPt(s));
+  const logical = item.kind === "ident" ? identLines(s) : captureLines(s);
+  const names = item.kind === "ident" ? ID_NAMES : CAP_NAMES;
+  const out = { w, lines: [], warnings: [], overflow: false, wraps: 0, pt: capPt };
+  let y = PAD_Y;
+  logical.forEach((l, li) => {
+    const f = fitLogical(l, avail, capPt);
+    if (!f) return;
+    out.wraps += f.lines.length - 1;
+    if (f.overflow){ out.overflow = true; out.warnings.push(`${names[li]} : un mot est trop long pour cette largeur. Abrégez-le.`); }
+    else if (f.lines.length > 1) out.warnings.push(`${names[li]} : sur ${f.lines.length} lignes${capPt ? "" : ` à ${fr(f.pt)} pt`}.`);
+    else if (!capPt && f.pt < 4.5) out.warnings.push(`${names[li]} : réduit à ${fr(f.pt)} pt, lisible à la loupe.`);
+    const pitch = Math.max(f.pt * (capPt ? 1.12 : 1.2) * 25.4 / 72, 1.5);
+    f.lines.forEach((toks, i) => {
+      const parts = [];
+      toks.forEach((tok, j) => { if (j) parts.push({ t: " ", st: tok.parts[0].st }); parts.push(...tok.parts); });
+      out.lines.push({ parts, pt: f.pt, top: y, pitch, right: i === f.lines.length - 1 ? f.right : null });
+      y += pitch;
+    });
+  });
+  out.natural = y + PAD_Y;
+  out.h = Math.max(6, Math.ceil(out.natural * 2) / 2);
+  const minH = item.kind === "ident" ? 0 : Number(state.settings.capMinH) || 0;
+  if (minH > out.natural && out.lines.length){
+    const extra = minH - out.natural, n = out.lines.length;
+    const per = n > 1 ? Math.min(extra / (n - 1), out.lines[0].pitch * 0.35) : 0;
+    const shift = (extra - per * (n - 1)) / 2;
+    out.lines.forEach((l, i) => { l.top += shift + per * i; });
+    out.h = Math.max(out.h, minH);
+  }
+  return out;
+}
+
+function capOptions(s){
+  return CAP_SIZES.map(pt => { const L = layoutLabel({ kind: "capture", s }, pt); return { pt, w: L.w, h: L.h, wraps: L.wraps, overflow: L.overflow }; });
+}
+function autoCapPt(s){
+  const target = Number(state.settings.capMinH) || 15;
+  let fallback = null;
+  for (let pt = 9; pt >= MIN_PT - 1e-9; pt -= 0.25){
+    const L = layoutLabel({ kind: "capture", s }, pt);
+    if (L.overflow) continue;
+    if (L.natural <= target + 1e-6) return pt;
+    fallback = pt;
+  }
+  return fallback || 4;
+}
+function resolveCapPt(s){
+  const v = s.capPt || state.settings.capPt || "auto";
+  return v === "auto" ? autoCapPt(s) : (Number(v) || 5);
+}
+function capSelectHTML(s){
+  const cur = s.capPt || "auto", auto = autoCapPt(s);
+  let h = `<option value="auto" ${cur === "auto" ? "selected" : ""}>Remplir l'étiquette (${fr(auto)} pt)</option>`;
+  for (const o of capOptions(s)){
+    const note = o.overflow ? "un mot trop long" : (o.wraps ? `${o.wraps} ligne${o.wraps > 1 ? "s" : ""} coupée${o.wraps > 1 ? "s" : ""}` : "sans coupure");
+    h += `<option value="${o.pt}" ${String(cur) === String(o.pt) ? "selected" : ""} ${o.overflow ? "disabled" : ""}>${fr(o.pt)} pt : ${fr(o.w)} × ${fr(o.h)} mm, ${note}</option>`;
+  }
+  return h;
+}
+
+function partHTML(g){
+  if (g.sym) return `<span class="sym">${g.sym === "m" ? "♂" : "♀"}</span>`;
+  const t = esc(g.t);
+  if (g.st === "bolditalic") return `<b><i>${t}</i></b>`;
+  if (g.st === "italic") return `<i>${t}</i>`;
+  if (g.st === "bold") return `<b>${t}</b>`;
+  return t;
+}
+function labelHTML(L, pxmm, extra = ""){
+  let h = `<div class="lbl ${state.settings.border ? "b" : ""} ${L.overflow ? "over" : ""} ${extra}" style="width:${L.w*pxmm}px;height:${L.h*pxmm}px">`;
+  for (const l of L.lines){
+    h += `<div class="ln" style="top:${l.top*pxmm}px;left:${PAD_X*pxmm}px;right:${PAD_X*pxmm}px;height:${l.pitch*pxmm}px;line-height:${l.pitch*pxmm}px;font-size:${l.pt*25.4/72*pxmm}px">`;
+    h += l.parts.map(partHTML).join("");
+    if (l.right) h += `<span class="r">${esc(l.right.t)}</span>`;
+    h += `</div>`;
+  }
+  return h + `</div>`;
+}
+
+/* ---------- card packing ---------- */
+const cardOf = key => CARDS[key] || CARDS["4x6"];
+const cardUsed = (key = state.settings.card) => ((state.settings.usedBy || {})[key] || []).filter(r => r && typeof r === "object" && isFinite(r.x));
+const saveUsed = (arr, key = state.settings.card) => Store.saveSettings({ ...state.settings, usedBy: { ...(state.settings.usedBy || {}), [key]: arr } });
+const gapOf = () => Math.max(0, Number(state.settings.gap) || 0);
+function placeRect(used, w0, h0, key){
+  const gp = gapOf(), w = w0 + gp, h = h0 + gp;
+  const c = cardOf(key), m = CARD_MARGIN, bottom = state.settings.fillOrder !== "top", e = 1e-6;
+  const xs = new Set([m]), ys = new Set([bottom ? c.H - m - h : m]);
+  for (const r of used){
+    xs.add(r.x + r.w);
+    if (bottom){ ys.add(r.y - h); ys.add(r.y + r.h - h); } else { ys.add(r.y + r.h); ys.add(r.y); }
+  }
+  let best = null;
+  for (const x of xs) for (const y of ys){
+    if (x < m - e || y < m - e || x + w > c.W - m + e || y + h > c.H - m + e) continue;
+    if (used.some(r => x < r.x + r.w - e && r.x < x + w - e && y < r.y + r.h - e && r.y < y + h - e)) continue;
+    if (!best || (bottom ? (y > best.y + e || (Math.abs(y - best.y) < e && x < best.x)) : (y < best.y - e || (Math.abs(y - best.y) < e && x < best.x)))) best = { x, y };
+  }
+  return best ? { x: best.x, y: best.y, w, h, lx: best.x + gp / 2, ly: best.y + gp / 2 } : null;
+}
+const round2 = r => ({ x: Math.round(r.x * 100) / 100, y: Math.round(r.y * 100) / 100, w: Math.round(r.w * 100) / 100, h: Math.round(r.h * 100) / 100 });
+
+/* ---------- PDF ---------- */
+function drawSym(doc, kind, x, by, pt){
+  const em = pt * 25.4 / 72, r = em * 0.2;
+  doc.setLineWidth(em * 0.075);
+  if (kind === "m"){
+    const cx = x + em * 0.06 + r, cy = by - r - em * 0.01;
+    doc.circle(cx, cy, r, "S");
+    const sx = cx + r * 0.707, sy = cy - r * 0.707, ex = cx + r + em * 0.3, ey = cy - r - em * 0.3, a = em * 0.17;
+    doc.line(sx, sy, ex, ey); doc.line(ex - a, ey, ex, ey); doc.line(ex, ey, ex, ey + a);
+  } else {
+    const cx = x + em * 0.06 + r, cy = by - em * 0.47;
+    doc.circle(cx, cy, r, "S");
+    doc.line(cx, cy + r, cx, by + em * 0.14); doc.line(cx - em * 0.13, by - em * 0.05, cx + em * 0.13, by - em * 0.05);
+  }
+}
+function drawLabel(doc, x, y, L){
+  if (state.settings.border){ doc.setLineWidth(0.15); doc.rect(x, y, L.w, L.h, "S"); }
+  for (const l of L.lines){
+    const by = y + l.top + l.pitch * 0.76;
+    let cx = x + PAD_X;
+    doc.setFontSize(l.pt);
+    for (const g of l.parts){
+      if (g.sym){ drawSym(doc, g.sym, cx, by, l.pt); cx += partWidth(g, l.pt); continue; }
+      doc.setFont("helvetica", g.st || "normal");
+      const t = pdfSafe(g.t);
+      doc.text(t, cx, by);
+      cx += partWidth(g, l.pt);
+    }
+    if (l.right){
+      doc.setFont("helvetica", "normal");
+      doc.text(pdfSafe(l.right.t), x + L.w - PAD_X, by, { align: "right" });
+    }
+  }
+}
+function newDoc(c){ const d = new jsPDF({ unit: "mm", format: [c.W, c.H], orientation: "portrait" }); d.setTextColor(0,0,0); d.setDrawColor(0,0,0); return d; }
+
+/* ---------- storage ---------- */
+const LKEY = "registre-araignees-v1";
+const Store = {
+  mode: null, col: null, settingsRef: null, downloads: null,
+  async init(){
+    let db = null, user = null, dl = null;
+    if (window.claude && typeof window.claude.use === "function"){
+      try { [db, user, dl] = await Promise.all([window.claude.use("db"), window.claude.use("user"), window.claude.use("downloads")]); } catch (e) {}
+    }
+    this.downloads = dl;
+    let uid = null;
+    if (db && user){ try { uid = await user.id(); } catch (e) {} }
+    if (db && uid){
+      this.mode = "db";
+      this.col = db.doc(`data/users/${uid}/profile`).collection("specimens");
+      this.settingsRef = db.doc(`data/users/${uid}/settings`);
+      let gotS = false, gotC = false;
+      const maybeReady = () => { if (gotS && gotC && !state.ready){ state.ready = true; render(); } else if (state.ready) onData(); };
+      this.col.onSnapshot(snap => { state.specimens = snap.docs.map(d => ({ ...d.data(), id: d.id })); gotC = true; maybeReady(); },
+        e => banner(`Le registre ne répond plus (${e.code}). Rechargez la page ; les données déjà enregistrées sont conservées.`));
+      this.settingsRef.onSnapshot(s => { state.settings = { ...DEFAULTS, ...(s.exists ? s.data() : {}) }; gotS = true; maybeReady(); },
+        () => { gotS = true; maybeReady(); });
+    } else {
+      this.mode = "local";
+      try {
+        const raw = localStorage.getItem(LKEY);
+        if (raw){ const d = JSON.parse(raw); state.specimens = d.specimens || []; state.settings = { ...DEFAULTS, ...(d.settings || {}) }; }
+      } catch (e) {}
+      Local.check();
+      state.ready = true; render(); Local.banner();
+    }
+  },
+  persistLocal(){
+    try { localStorage.setItem(LKEY, JSON.stringify({ specimens: state.specimens, settings: state.settings })); Local.saveFailed = false; }
+    catch (e) { Local.saveFailed = true; }
+    Local.banner();
+  },
+  async saveSpecimen(sp){
+    const { id, ...data } = clean(sp);
+    if (this.mode === "db") await this.col.doc(id).set(data);
+    else {
+      const i = state.specimens.findIndex(x => x.id === id);
+      if (i >= 0) state.specimens[i] = { ...data, id }; else state.specimens.push({ ...data, id });
+      Local.changed(); this.persistLocal(); onData();
+    }
+  },
+  async patchSpecimen(id, patch){
+    if (this.mode === "db") await this.col.doc(id).update(clean(patch));
+    else {
+      const i = state.specimens.findIndex(x => x.id === id); if (i < 0) return;
+      state.specimens[i] = { ...state.specimens[i], ...patch };
+      this.persistLocal(); onData();
+    }
+  },
+  async verify(sp){
+    if (this.mode === "db"){
+      const snap = await this.col.doc(sp.id).get();
+      if (!snap.exists || (snap.data() || {}).no !== sp.no) throw { code: "not_saved" };
+    } else {
+      if (Local.saveFailed || !Local.ok) throw { code: "stockage_navigateur" };
+      const raw = localStorage.getItem(LKEY), d = raw ? JSON.parse(raw) : null;
+      if (!d || !(d.specimens || []).some(x => x.id === sp.id && x.no === sp.no)) throw { code: "not_saved" };
+    }
+  },
+  async deleteSpecimen(id){
+    if (this.mode === "db") await this.col.doc(id).delete();
+    else { state.specimens = state.specimens.filter(x => x.id !== id); this.persistLocal(); onData(); }
+  },
+  async saveSettings(s){
+    state.settings = { ...DEFAULTS, ...s };
+    if (this.mode === "db") await this.settingsRef.set(clean(state.settings));
+    else this.persistLocal();
+  },
+};
+function banner(msg){ $("#banner").className = "warn"; $("#banner").innerHTML = msg ? `<div class="wrap">${esc(msg)}</div>` : ""; }
+
+/* ---------- protections du registre local (fichier autonome) ---------- */
+const MKEY = "registre-araignees-meta", REMIND_AFTER = 5;
+const Local = {
+  ok: true, saveFailed: false, meta: { lastBackup: null, since: 0 },
+  check(){
+    try {
+      const k = "__test" + Date.now();
+      localStorage.setItem(k, "1"); this.ok = localStorage.getItem(k) === "1"; localStorage.removeItem(k);
+    } catch (e) { this.ok = false; }
+    try { const m = JSON.parse(localStorage.getItem(MKEY) || "null"); if (m) this.meta = { ...this.meta, ...m }; } catch (e) {}
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+  },
+  saveMeta(){ try { localStorage.setItem(MKEY, JSON.stringify(this.meta)); } catch (e) {} },
+  changed(){ this.meta.since = (this.meta.since || 0) + 1; this.saveMeta(); },
+  backedUp(){ this.meta = { lastBackup: new Date().toISOString(), since: 0 }; this.saveMeta(); this.banner(); },
+  lastText(){ return this.meta.lastBackup ? new Date(this.meta.lastBackup).toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" }) : "jamais"; },
+  banner(){
+    if (Store.mode !== "local") return;
+    const el = $("#banner"), btn = `<button class="link" data-act="json">Exporter une sauvegarde</button>`;
+    let cls = "info", msg;
+    if (!this.ok){ cls = "warn"; msg = `<strong>Attention : ce navigateur n'enregistre pas le registre</strong> (navigation privée ou stockage bloqué). Tout sera perdu à la fermeture de la fenêtre. Ouvrez le fichier dans une fenêtre normale, ou exportez une sauvegarde avant de fermer. ${btn}`; }
+    else if (this.saveFailed){ cls = "warn"; msg = `<strong>Le dernier enregistrement a échoué</strong> : l'espace du navigateur est peut-être plein. Exportez une sauvegarde maintenant. ${btn}`; }
+    else if ((this.meta.since || 0) >= REMIND_AFTER){ cls = "warn"; msg = `<strong>${this.meta.since} modifications depuis la dernière sauvegarde</strong> (${esc(this.lastText())}). Une copie vous protège si le navigateur est nettoyé. ${btn}`; }
+    else if (!state.specimens.length){ msg = `Le registre est gardé dans ce navigateur. Avant de commencer, placez ce fichier à un endroit fixe (par exemple Documents) et utilisez toujours le même navigateur, hors navigation privée. <button class="link" data-act="tab" data-v="about">Pourquoi, et vos données sont-elles protégées ?</button>`; }
+    else { msg = `Registre gardé dans ce navigateur. Dernière sauvegarde : ${esc(this.lastText())}. ${btn}`; }
+    el.className = cls;
+    el.innerHTML = `<div class="wrap">${msg}</div>`;
+  },
+};
+
+/* ---------- printing ---------- */
+async function offerFile(filename, data, mime){
+  if (Store.downloads){
+    try {
+      await Promise.race([Store.downloads.save({ filename, data }), new Promise((_, rej) => setTimeout(() => rej({ code: "timeout" }), 120000))]);
+      return true;
+    }
+    catch (e) { if (e && e.code !== "declined") toast("Le téléchargement n'a pas pu se faire ici."); return false; }
+  }
+  try {
+    const url = URL.createObjectURL(new Blob([data], { type: mime }));
+    const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000); return true;
+  } catch (e) { toast("Le téléchargement n'est pas disponible dans cette vue."); return false; }
+}
+async function printItems(items){
+  const st = state.settings, c = cardOf(st.card);
+  const copies = Math.max(1, Math.min(3, parseInt(st.copies, 10) || 1));
+  const pages = [];
+  let cur = { used: cardUsed(), place: [] };
+  for (const it of items){
+    const L = layoutLabel(it);
+    for (let k = 0; k < copies; k++){
+      let r = placeRect(cur.used, L.w, L.h, st.card);
+      if (!r){ pages.push(cur); cur = { used: [], place: [] }; r = placeRect(cur.used, L.w, L.h, st.card); }
+      if (!r){ toast("Cette étiquette ne tient pas sur ce format de carte."); return false; }
+      cur.used.push(round2(r)); cur.place.push({ r, L });
+    }
+  }
+  pages.push(cur);
+  const printPages = pages.filter(pg => pg.place.length);
+  const doc = newDoc(c);
+  printPages.forEach((pg, i) => {
+    if (i > 0) doc.addPage([c.W, c.H], "portrait");
+    pg.place.forEach(({ r, L }) => drawLabel(doc, r.lx, r.ly, L));
+  });
+  const name = items.length === 1 ? `etiquette-${String(items[0].s.no || "").replace(/[^A-Za-z0-9-]+/g, "")}-${items[0].kind === "ident" ? "ident" : "recolte"}.pdf` : `etiquettes-${today()}.pdf`;
+  const ok = await offerFile(name, doc.output("arraybuffer"), "application/pdf");
+  if (!ok) return false;
+  state.undo = { used: cardUsed(), card: st.card };
+  await saveUsed(pages[pages.length - 1].used);
+  toast(printPages.length > 1 ? `PDF prêt sur ${printPages.length} cartes : finissez la carte en cours, puis une neuve.` : "PDF prêt. Imprimez-le à la taille réelle.");
+  return true;
+}
+async function markPrinted(s, kind){
+  try { await Store.patchSpecimen(s.id, { [kind === "ident" ? "printedIdent" : "printedCapture"]: new Date().toISOString() }); } catch (e) {}
+}
+function printTemplate(){
+  const c = cardOf(state.settings.card), doc = newDoc(c), m = CARD_MARGIN;
+  doc.setLineWidth(0.15); doc.setFont("helvetica", "normal");
+  let y = m, row = 0;
+  const widths = [35, 30, 22];
+  while (y + 15 <= c.H - m - 16){
+    const w = widths[row % 3];
+    let x = m;
+    while (x + w <= c.W - m + 1e-6){ doc.rect(x, y, w, 15, "S"); doc.setFontSize(6); doc.text(`${w} × 15`, x + w / 2, y + 8.5, { align: "center" }); x += w; }
+    y += 15; row++;
+  }
+  const rl = Math.floor((c.W - 2 * m) / 10) * 10, rx = (c.W - rl) / 2, ry = c.H - m - 9;
+  doc.setLineWidth(0.2); doc.line(rx, ry, rx + rl, ry);
+  for (let i = 0; i <= rl; i += 5) doc.line(rx + i, ry, rx + i, ry - (i % 10 ? 1.2 : 2.2));
+  doc.setFontSize(6); doc.text(`${rl} mm`, rx + rl / 2, ry + 2.8, { align: "center" });
+  doc.setFontSize(6);
+  doc.text("Vérifiez à la règle : la règle et les cases doivent avoir exactement ces longueurs. Sinon, désactivez « Ajuster à la page ».", c.W / 2, c.H - m - 2, { align: "center", maxWidth: c.W - 2 * m });
+  offerFile(`gabarit-${state.settings.card}.pdf`, doc.output("arraybuffer"), "application/pdf");
+}
+
+/* ---------- derived ---------- */
+const byNo = (a, b) => String(a.no || "").localeCompare(String(b.no || ""), "fr", { numeric: true });
+function nextNo(year, excludeId){
+  const p = `${state.settings.prefix ?? "#"}${String(year).slice(-2)}-`;
+  let max = 0;
+  for (const s of state.specimens){
+    if (s.id === excludeId || !s.no || !s.no.startsWith(p)) continue;
+    const n = parseInt(s.no.slice(p.length), 10);
+    if (n > max) max = n;
+  }
+  return p + String(max + 1).padStart(3, "0");
+}
+function monthsSince(iso){ if (!iso) return Infinity; const d = new Date(iso + "T12:00"); return isNaN(d) ? Infinity : (Date.now() - d) / (1000 * 3600 * 24 * 30.44); }
+function alcoolDue(s){ const ref = s.dateAlcoolChange || s.dateAlcool || s.dateCapture; return !!ref && monthsSince(ref) >= (Number(state.settings.alcoolMonths) || 12); }
+function taxonHTML(s){
+  if (!s.identifie) return "";
+  if (s.genre) return `<b><i>${esc(s.genre)}${s.espece ? " " + esc(s.espece) : ""}</i></b>${s.espece ? (s.auteur ? " " + esc(s.auteur) : "") : " sp."}${s.famille ? `<div class="meta">${esc(s.famille)}</div>` : ""}`;
+  return esc(s.famille || "");
+}
+function suggestions(field, base){
+  const set = new Set(base);
+  state.specimens.forEach(s => { if (s[field]) set.add(s[field]); });
+  return [...set].sort((a, b) => a.localeCompare(b, "fr"));
+}
+function usedPct(){
+  const c = cardOf(state.settings.card), area = (c.W - 2 * CARD_MARGIN) * (c.H - 2 * CARD_MARGIN);
+  return Math.round(cardUsed().reduce((a, r) => a + r.w * r.h, 0) / area * 100);
+}
+
+/* ---------- render ---------- */
+function renderTabs(){
+  const tabs = [["list", "Spécimens"], ["card", "Carte d'impression"], ["settings", "Réglages"], ...(Store.mode === "local" ? [["about", "À propos"]] : [])];
+  const cur = state.view === "edit" ? "list" : state.view;
+  $("#tabs").innerHTML = tabs.map(([v, l]) => `<button role="tab" data-act="tab" data-v="${v}" aria-selected="${cur === v}">${l}</button>`).join("");
+}
+function render(){
+  renderTabs();
+  const app = $("#app");
+  if (!state.ready){ app.innerHTML = `<div class="loading">Ouverture du registre…</div>`; return; }
+  if (state.view === "edit"){ app.innerHTML = editorHTML(); updatePreview(); }
+  else if (state.view === "card") app.innerHTML = cardHTML();
+  else if (state.view === "settings") app.innerHTML = settingsHTML();
+  else if (state.view === "about") app.innerHTML = aboutHTML();
+  else app.innerHTML = listHTML();
+}
+function onData(){ renderTabs(); if (state.view === "list" || state.view === "card") render(); }
+
+function listHTML(){
+  const q = state.search.trim().toLowerCase();
+  const rows = [...state.specimens].sort(byNo).reverse().filter(s => {
+    if (state.filter === "todo" && s.identifie) return false;
+    if (state.filter === "done" && !s.identifie) return false;
+    if (state.filter === "alcool" && !alcoolDue(s)) return false;
+    if (!q) return true;
+    return [s.no, s.localite, s.region, s.milieu, s.microhab, s.famille, s.genre, s.espece, s.moyen, s.photo, s.echantillon, s.emplacement, s.protocole].some(v => v && String(v).toLowerCase().includes(q));
+  });
+  const todo = state.specimens.filter(s => !s.identifie).length, due = state.specimens.filter(alcoolDue).length;
+  let h = `<div class="toolbar">
+    <button class="btn primary" data-act="new">Nouveau spécimen</button>
+    <input type="search" id="search" placeholder="Chercher un numéro, un lieu, un taxon…" value="${esc(state.search)}" aria-label="Chercher">
+    <div class="seg" role="group" aria-label="Filtrer">
+      ${[["all","Tous"],["todo",`À identifier (${todo})`],["done","Identifiés"],["alcool",`Alcool à vérifier (${due})`]].map(([v,l]) => `<button data-act="filter" data-v="${v}" aria-pressed="${state.filter===v}">${l}</button>`).join("")}
+    </div></div>`;
+  if (!state.specimens.length) return h + `<div class="empty">Aucun spécimen. Après les photos, choisissez « Nouveau spécimen » : l'étiquette de récolte s'imprime tout de suite.</div>`;
+  if (!rows.length) return h + `<div class="empty">Aucun spécimen ne correspond.</div>`;
+  return h + `<div class="rows">` + rows.map(s => {
+    const chips = [`<span class="chip">${VIALS[vialOf(s)].name}</span>`];
+    if (s.protocole) chips.push(`<span class="chip">${esc(s.protocole)}${s.echantillon ? " " + esc(s.echantillon) : ""}</span>`);
+    else if (s.echantillon) chips.push(`<span class="chip">Éch. ${esc(s.echantillon)}</span>`);
+    if (s.emplacement) chips.push(`<span class="chip">${esc(s.emplacement)}</span>`);
+    if (alcoolDue(s)) chips.push(`<span class="chip todo">Alcool à vérifier</span>`);
+    if (!s.printedCapture) chips.push(`<span class="chip todo">Récolte non imprimée</span>`);
+    if (s.identifie && !s.printedIdent) chips.push(`<span class="chip todo">Identification non imprimée</span>`);
+    const del = state.confirmDelete === s.id
+      ? `<button class="link danger" data-act="del-yes" data-id="${s.id}">Confirmer la suppression</button><button class="link" data-act="del-no">Garder</button>`
+      : `<button class="link danger" data-act="del" data-id="${s.id}">Supprimer</button>`;
+    return `<div class="row">
+      <div><div class="no">${esc(s.no)}</div><div class="meta">${esc(isTrap(s.moyen) && s.datePose ? `${fmtLong(s.datePose)} au ${fmtLong(s.dateCapture)}` : fmtLong(s.dateCapture))}${s.photo ? `<br>Photo ${esc(s.photo)}` : ""}</div></div>
+      <div><div>${esc(s.localite || s.region || "")}</div><div class="meta">${esc(join([s.milieu, s.microhab, s.moyen ? s.moyen + (s.nuit ? " (nuit)" : "") : "", s.effortVal ? `${s.effortVal} ${s.effortUnit || ""}`.trim() : ""], ", "))}</div></div>
+      <div class="taxon">${s.identifie ? taxonHTML(s) + (s.sexe ? `<div class="meta">${esc(sexeText(s))}</div>` : "") : `<span class="chip">À identifier</span>`}<div>${chips.join("")}</div></div>
+      <div class="acts">
+        <button class="link" data-act="ident" data-id="${s.id}">${s.identifie ? "Modifier l'identification" : "Identifier"}</button>
+        <button class="link" data-act="edit" data-id="${s.id}">Modifier la récolte</button>
+        <button class="link" data-act="print-cap" data-id="${s.id}">Imprimer la récolte</button>
+        ${alcoolDue(s) ? `<button class="link" data-act="alcool" data-id="${s.id}">Alcool changé aujourd'hui</button>` : ""}
+        ${s.identifie ? `<button class="link" data-act="print-id" data-id="${s.id}">Imprimer l'identification</button>` : ""}
+        ${del}
+      </div></div>`;
+  }).join("") + `</div>`;
+}
+
+function f(name, label, val, o = {}){
+  const attrs = o.attrs || "";
+  const input = o.textarea ? `<textarea name="${name}" ${attrs}>${esc(val)}</textarea>`
+    : `<input name="${name}" value="${esc(val ?? "")}" ${o.type ? `type="${o.type}"` : ""} ${o.list ? `list="${o.list}"` : ""} ${attrs}>`;
+  return `<label class="f ${o.cls || ""}"><span>${label}</span>${input}${o.help ? `<small>${o.help}</small>` : ""}</label>`;
+}
+function sel(name, label, val, options, cls = "", help = ""){
+  return `<label class="f ${cls}"><span>${label}</span><select name="${name}">${options.map(([v, l]) => `<option value="${esc(v)}" ${String(val) === String(v) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>${help ? `<small>${help}</small>` : ""}</label>`;
+}
+const vialOptions = () => Object.entries(VIALS).map(([k, v]) => [k, `${v.name} (${v.w} mm)`]);
+function moyenOptions(cur){
+  const opts = [["", "—"], ...MOYENS.map(m => [m, m])];
+  if (cur && !MOYENS.includes(cur)) opts.push([cur, `${cur} (ancienne valeur)`]);
+  return opts;
+}
+function effortOptions(m, cur){
+  const units = EFFORT_UNITS(m), c = units.includes(cur) ? cur : units[0];
+  return units.map(u => `<option value="${esc(u)}" ${u === c ? "selected" : ""}>${esc(u)}</option>`).join("");
+}
+function editorHTML(){
+  const s = state.editing, ident = state.mode === "ident";
+  const dl = (id, arr) => `<datalist id="${id}">${arr.map(v => `<option value="${esc(v)}">`).join("")}</datalist>`;
+  const lists = dl("dl-milieu", suggestions("milieu", [])) + dl("dl-micro", suggestions("microhab", MICROHABS))
+    + dl("dl-famille", suggestions("famille", FAMILLES)) + dl("dl-localite", suggestions("localite", [])) + dl("dl-region", suggestions("region", [])) + dl("dl-pays", suggestions("pays", [state.settings.pays]));
+  const acts = `<div class="formacts">
+      <button class="btn primary" type="submit" data-print="1">${state.isNew || ident ? "Enregistrer et imprimer" : "Enregistrer et réimprimer"}</button>
+      <button class="btn" type="submit" data-print="0">Enregistrer sans imprimer</button>
+      <button class="btn quiet" type="button" data-act="cancel">Annuler</button>
+    </div>
+    <div class="printon"><label class="f"><span>Imprimer sur</span><select data-set="card">${Object.entries(CARDS).map(([k, v]) => `<option value="${k}" ${state.settings.card === k ? "selected" : ""}>${v.name}</option>`).join("")}</select></label></div>
+    <p class="slot" id="slot"></p><div id="ed-err" class="err" role="alert"></div>`;
+  let form;
+  if (!ident){
+    form = `<h2>${state.isNew ? "Nouveau spécimen" : "Modifier la récolte"}</h2>
+      <p class="hint">${state.isNew ? "Juste après les photos : l'étiquette part avec le spécimen dans l'alcool." : "Corrigez les données, puis réimprimez si l'étiquette a changé."}</p>
+      <form id="ed" class="grid" autocomplete="off">
+        ${f("no", "Numéro", s.no, { cls: "s2", attrs: 'required spellcheck="false"' })}
+        <label class="f s2"><span id="lbl-date">${isTrap(s.moyen) ? "Date de relevé" : "Date de récolte"}</span><input name="dateCapture" type="date" value="${esc(s.dateCapture || "")}"></label>
+        ${sel("flacon", "Flacon", vialOf(s), vialOptions(), "s2")}
+        ${f("pays", "Pays et province", s.pays, { cls: "s2", list: "dl-pays" })}
+        ${f("region", "Région", s.region, { cls: "s4", list: "dl-region", attrs: 'placeholder="Haute-Côte-Nord"' })}
+        ${f("localite", "Localité", s.localite, { cls: "s4", list: "dl-localite", attrs: 'placeholder="Grandes-Bergeronnes"' })}
+        ${f("photo", "Photo", s.photo, { cls: "s2", help: "Fichier, facultatif", attrs: 'spellcheck="false"' })}
+        ${f("lat", "Latitude", s.lat, { cls: "s2", attrs: 'inputmode="decimal" placeholder="48.2335"' })}
+        ${f("lon", "Longitude", s.lon, { cls: "s2", attrs: 'inputmode="decimal" placeholder="-69.3222"' })}
+        ${f("alt", "Altitude (m)", s.alt, { cls: "s2", attrs: 'inputmode="numeric"', help: "Facultatif" })}
+        <div class="check"><button type="button" class="link" data-act="geo">Utiliser ma position actuelle</button><span id="geo-msg" class="meta"></span></div>
+        <label class="f s6"><span>Taille du texte</span><select name="capPt" id="capPt">${capSelectHTML(s)}</select><small>Toutes les lignes ont la même taille. « Remplir » prend la plus grande taille qui tient dans l'étiquette.</small></label>
+        ${sel("moyen", "Méthode de récolte", s.moyen, moyenOptions(s.moyen), "s3")}
+        ${f("microhab", "Microhabitat", s.microhab, { cls: "s3", list: "dl-micro", attrs: 'placeholder="sous les pierres"' })}
+        <label class="f s3" data-show="trap"><span>Date de pose</span><input name="datePose" type="date" value="${esc(s.datePose || "")}"><small>La date du relevé est la date de récolte</small></label>
+        ${sel("trapLiquid", "Liquide du piège", s.trapLiquid || "", TRAP_LIQUIDS.map(v => [v, v || "—"]), "s3 trap-only")}
+        ${f("effortVal", "Effort d'échantillonnage", s.effortVal, { cls: "s3", type: "number", attrs: 'min="0" step="any" inputmode="decimal"', help: "Non imprimé" })}
+        <label class="f s3"><span>Unité de l'effort</span><select name="effortUnit" id="effortUnit">${effortOptions(s.moyen, s.effortUnit)}</select></label>
+        <label class="check"><input type="checkbox" name="nuit" ${s.nuit ? "checked" : ""}> Récolte de nuit (ajoute « (nuit) » après la méthode)</label>
+        ${sel("protocole", "Protocole", s.protocole || "", PROTOCOLES.map(v => [v, v || "Aucun"]), "s3")}
+        ${f("echantillon", "Code d'échantillon", s.echantillon, { cls: "s3", attrs: 'spellcheck="false" placeholder="CPAD-2026-03"', help: state.settings.printSample ? "Imprimé avant le numéro" : "Regroupe les flacons d'un même échantillon" })}
+        ${f("milieu", "Habitat", s.milieu, { list: "dl-milieu", attrs: 'placeholder="Rivage rocheux du fleuve"' })}
+        ${f("leg", "Récolteur", s.leg, { cls: "s3" })}
+        ${f("notes", "Notes", s.notes, { cls: "s3", textarea: true, help: "Non imprimées" })}
+        <details class="more" ${[s.stadeRecolte, s.eleve, s.dateAlcool, s.emplacement, s.dateAlcoolChange].some(Boolean) || (s.conservation && s.conservation !== CONSERVATIONS[0]) ? "open" : ""}>
+          <summary>Élevage et conservation <small>(non imprimé)</small></summary>
+          <div class="grid">
+            ${sel("stadeRecolte", "Stade à la récolte", s.stadeRecolte || "", STADES.map(v => [v, v || "—"]), "s2")}
+            <label class="check s2"><input type="checkbox" name="eleve" ${s.eleve ? "checked" : ""}> Élevé en captivité</label>
+            ${f("dateAlcool", "Mise en alcool", s.dateAlcool, { cls: "s2", type: "date", help: "Si différente de la récolte" })}
+            ${sel("conservation", "Liquide de conservation", s.conservation || CONSERVATIONS[0], CONSERVATIONS.map(v => [v, v]), "s3")}
+            ${f("emplacement", "Emplacement", s.emplacement, { cls: "s3", attrs: 'placeholder="Pot 4, râtelier B"' })}
+            ${f("dateAlcoolChange", "Dernier changement d'alcool", s.dateAlcoolChange, { cls: "s3", type: "date" })}
+          </div>
+        </details>
+        ${acts}
+      </form>`;
+  } else {
+    form = `<h2>Identification</h2>
+      <div class="recap"><strong>${esc(s.no)}</strong>, ${esc(fmtLong(s.dateCapture))}, ${esc(join([s.localite, s.milieu], ", "))}</div>
+      <form id="ed" class="grid" autocomplete="off">
+        ${f("genre", "Genre", s.genre, { cls: "s3" })}
+        ${f("espece", "Espèce", s.espece, { cls: "s3", help: "Vide = « sp. »" })}
+        ${f("auteur", "Auteur", s.auteur, { cls: "s3", attrs: 'placeholder="(Banks)"' })}
+        ${f("famille", "Famille", s.famille, { cls: "s3", list: "dl-famille", help: state.settings.showFamily ? "Imprimée sous l'espèce" : "Non imprimée (voir Réglages)" })}
+        <label class="f s2"><span>Sexe et stade</span><select name="sexe">${SEXES.map(([v, l]) => `<option value="${v}" ${s.sexe === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        ${f("nombre", "Nombre", s.nombre || 1, { cls: "s2", type: "number", attrs: 'min="1" max="999"' })}
+        ${sel("flacon", "Flacon", vialOf(s), vialOptions(), "s2", "Change aussi la récolte")}
+        ${f("det", "Déterminé par", s.det, { cls: "s3" })}
+        ${f("dateDet", "Date d'identification", s.dateDet, { cls: "s3", type: "date" })}
+        <div class="f s6"><span>Structures prélevées</span>
+          <div class="checks"><label><input type="checkbox" name="palpe" ${s.palpe ? "checked" : ""}> Palpe gauche détaché</label>
+          <label><input type="checkbox" name="epigyne" ${s.epigyne ? "checked" : ""}> Épigyne prélevée</label></div></div>
+        ${f("structAutre", "Autres structures", s.structAutre, { cls: "s3" })}
+        ${f("emplacement", "Emplacement", s.emplacement, { cls: "s3", attrs: 'placeholder="Pot 4, râtelier B"' })}
+        ${acts}
+      </form>`;
+  }
+  return `${lists}<section class="editor"><div>${form}</div>
+    <aside class="stage" aria-label="Aperçu de l'étiquette">
+      <h3>${ident ? "Étiquette d'identification" : "Étiquette de récolte"} <span class="dim" id="pv-dim"></span></h3>
+      <div class="mag" id="pv"></div>
+      <div class="scalebar"><i style="width:100px"></i>10 mm</div>
+      <div class="real"><span id="pv-real"></span><span>Taille réelle, environ</span></div>
+      <ul class="warns" id="pv-warn"></ul>
+    </aside></section>`;
+}
+function readForm(form, target){
+  for (const el of form.elements){
+    if (!el.name) continue;
+    target[el.name] = el.type === "checkbox" ? el.checked : el.value.trim();
+  }
+}
+function updatePreview(){
+  const form = $("#ed"); if (!form) return;
+  readForm(form, state.editing);
+  const trap = isTrap(state.editing.moyen);
+  form.querySelectorAll("[data-show=trap], .trap-only").forEach(el => { el.hidden = !trap; });
+  const ld = $("#lbl-date"); if (ld) ld.textContent = trap ? "Date de relevé" : "Date de récolte";
+  const eu = $("#effortUnit");
+  if (eu && !EFFORT_UNITS(state.editing.moyen).includes(eu.value)){ eu.innerHTML = effortOptions(state.editing.moyen, state.editing.effortUnit); state.editing.effortUnit = eu.value; }
+  const cp = $("#capPt");
+  if (cp){ cp.innerHTML = capSelectHTML(state.editing); }
+  const L = layoutLabel({ kind: state.mode === "ident" ? "ident" : "capture", s: state.editing });
+  $("#pv").innerHTML = labelHTML(L, 10, "solo");
+  $("#pv-real").innerHTML = labelHTML(L, MMPX, "solo");
+  $("#pv-dim").textContent = `${fr(L.w)} × ${fr(L.h)} mm${L.pt ? `, ${fr(L.pt)} pt` : ""}`;
+  $("#pv-warn").innerHTML = L.warnings.length ? L.warnings.map(x => `<li>${esc(x)}</li>`).join("") : `<li class="ok">${L.pt ? `Tout le texte à ${fr(L.pt)} pt, sans ligne coupée.` : "Tout tient à une taille confortable."}</li>`;
+  const fits = placeRect(cardUsed(), L.w, L.h, state.settings.card);
+  $("#slot").textContent = fits ? `La carte en cours a de la place pour cette étiquette.` : `La carte en cours est pleine pour cette taille : chargez une carte neuve.`;
+}
+
+function cardHTML(){
+  const st = state.settings, c = cardOf(st.card), used = cardUsed();
+  const pxmm = c.W > 150 ? 2.3 : 3.4, m = CARD_MARGIN;
+  const ghost = placeRect(used, VIALS[st.flacon] ? VIALS[st.flacon].w : 35, Number(st.capMinH) || 15, st.card);
+  let cells = `<div class="area" style="left:${m*pxmm}px;top:${m*pxmm}px;width:${(c.W-2*m)*pxmm}px;height:${(c.H-2*m)*pxmm}px"></div>`;
+  used.forEach((r, i) => {
+    cells += `<button class="slot-cell used" data-act="free" data-i="${i}" title="Libérer cette zone" style="left:${r.x*pxmm}px;top:${r.y*pxmm}px;width:${r.w*pxmm}px;height:${r.h*pxmm}px" aria-label="Zone utilisée de ${fr(r.w)} × ${fr(r.h)} mm, libérer"></button>`;
+  });
+  if (ghost) cells += `<div class="slot-cell next" style="left:${ghost.x*pxmm}px;top:${ghost.y*pxmm}px;width:${ghost.w*pxmm}px;height:${ghost.h*pxmm}px">Prochaine</div>`;
+  return `<section class="cardview"><div>
+    <h2>Carte d'impression</h2>
+    <p class="hint">${used.length} étiquette${used.length > 1 ? "s" : ""} déjà imprimée${used.length > 1 ? "s" : ""}, environ ${usedPct()} % de la carte. Chaque étiquette prend la place la plus basse disponible selon sa taille. Touchez une zone grise pour la libérer.</p>
+    <div class="opts">
+      <label class="f"><span>Format de la carte</span><select data-set="card">${Object.entries(CARDS).map(([k, v]) => `<option value="${k}" ${st.card === k ? "selected" : ""}>${v.name}</option>`).join("")}</select></label>
+      <label class="f"><span>Ordre de remplissage</span><select data-set="fillOrder"><option value="bottom" ${st.fillOrder !== "top" ? "selected" : ""}>Du bas vers le haut</option><option value="top" ${st.fillOrder === "top" ? "selected" : ""}>Du haut vers le bas</option></select></label>
+      <label class="f"><span>Exemplaires par impression</span><select data-set="copies">${[1,2,3].map(n => `<option ${Number(st.copies) === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label class="f"><span>Espace de coupe entre étiquettes</span><select data-set="gap">${[0,2,3,4,5].map(n => `<option value="${n}" ${Number(st.gap ?? 3) === n ? "selected" : ""}>${n} mm</option>`).join("")}</select></label>
+      <label class="check"><input type="checkbox" data-set="border" ${st.border ? "checked" : ""}> Contour de coupe</label>
+    </div>
+    <div class="btnrow">
+      <button class="btn primary" data-act="newcard">Nouvelle carte</button>
+      ${state.undo ? `<button class="btn" data-act="undo">Annuler la dernière impression</button>` : ""}
+      <button class="btn" data-act="template">Imprimer un gabarit de test</button>
+    </div>
+    <div class="tips">
+      <p><strong>Chaque fois :</strong> carte dans la cassette, face à imprimer vers le bas. Dans la fenêtre d'impression du PDF : taille réelle (100 %), format ${esc(c.name)}, niveaux de gris.</p>
+      <p><strong>Du bas vers le haut :</strong> le haut de la carte entre en premier dans l'imprimante et reste intact pendant que vous découpez par le bas.</p>
+      <p><strong>Gabarit :</strong> il trace des cases de 35, 30 et 22 mm sur 15 mm. Vérifiez-les à la règle sur papier ordinaire.</p>
+    </div>
+  </div>
+  <div><div class="card-sheet" style="width:${c.W*pxmm}px;height:${c.H*pxmm}px">${cells}<span class="feed">Bord d'entrée ↑</span></div></div></section>`;
+}
+
+const VERSION = "1.0.0-beta.1";
+function aboutHTML(){
+  return `<div class="settings about">
+    <section><h2>À propos et confidentialité</h2>
+      <p class="hint"><b>Version ${VERSION} (bêta, en cours d'essai).</b> Essayez d'abord avec des données fictives et exportez souvent une sauvegarde. Cette page explique ce que fait ce fichier, ce qu'il ne fait pas, et comment le vérifier vous-même.</p>
+      <h3>Vos données restent sur votre ordinateur</h3>
+      <p>Le registre n'a pas de serveur. Vos spécimens sont enregistrés uniquement dans la mémoire de votre navigateur, sur votre appareil. Personne d'autre n'y a accès, pas même l'auteur du fichier. Il n'y a ni compte, ni publicité, ni statistiques de visite, ni envoi de données.</p>
+      <p>Une règle de sécurité placée au début du fichier (<i>Content-Security-Policy</i>) interdit à la page toute connexion sortante. Même si du code tentait d'envoyer vos données quelque part, le navigateur le bloquerait.</p>
+      <h3>Pourquoi une connexion Internet est nécessaire</h3>
+      <p>Le fichier télécharge une seule chose à l'ouverture : <b>jsPDF 2.5.1</b>, une bibliothèque libre et très répandue (licence MIT) qui fabrique les PDF des étiquettes. Elle provient de cdnjs, le service public de bibliothèques de Cloudflare :</p>
+      <p class="mono">https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js</p>
+      <p>Le fichier contient l'empreinte numérique exacte de cette bibliothèque (<i>Subresource Integrity</i>). Si la version téléchargée différait, même d'un seul caractère, le navigateur refuserait de l'exécuter. Ce téléchargement ne transmet aucune donnée de votre registre ; comme pour toute page web, Cloudflare voit seulement qu'un ordinateur a demandé ce fichier.</p>
+      <h3>Pourquoi le mode privé ne convient pas</h3>
+      <p>En navigation privée, le navigateur efface volontairement tout ce que les pages ont enregistré dès que la fenêtre se ferme : c'est le but même de ce mode. Comme le registre garde vos données seulement dans le navigateur, elles disparaîtraient à la fermeture. Pour la même raison, effacer les « cookies et données de sites » efface aussi le registre. La sauvegarde (onglet Réglages) vous protège dans tous ces cas.</p>
+      <h3>Comment vérifier vous-même</h3>
+      <p>Ouvrez le fichier avec un éditeur de texte (Bloc-notes, TextEdit) : tout le code est lisible, rien n'est caché ni compressé. En cherchant « https:// », vous ne trouverez que l'adresse de jsPDF ci-dessus.</p>
+      <p>Dans le navigateur, la touche F12 (ou Cmd+Option+I sur Mac) ouvre les outils de développement. L'onglet « Réseau », puis un rechargement de la page, montre toutes les connexions : il n'y en a qu'une, vers cdnjs.</p>
+      <p>Pour vous assurer d'avoir le fichier original, comparez son empreinte SHA-256 à celle publiée par l'auteur. Sous Windows : <span class="mono">certutil -hashfile registre-araignees-autonome.html SHA256</span>. Sur Mac : <span class="mono">shasum -a 256 registre-araignees-autonome.html</span>.</p>
+    </section></div>`;
+}
+function settingsHTML(){
+  const s = state.settings, g = new Date().getFullYear();
+  return `<div class="settings">
+    <section><h2>Réglages</h2><p class="hint">Valeurs proposées par défaut et apparence des étiquettes.</p>
+    <form id="setf" class="grid" autocomplete="off">
+      ${f("prefix", "Préfixe des numéros", s.prefix, { cls: "s2", help: `Donne ${esc((s.prefix ?? "#") + String(g).slice(-2))}-001`, attrs: 'spellcheck="false"' })}
+      ${f("pays", "Pays et province", s.pays, { cls: "s4" })}
+      ${f("leg", "Récolteur par défaut", s.leg, { cls: "s3", attrs: 'placeholder="P. Paquin"' })}
+      ${f("det", "Déterminateur par défaut", s.det, { cls: "s3" })}
+      ${sel("flacon", "Flacon par défaut", VIALS[s.flacon] ? s.flacon : "10", vialOptions(), "s3")}
+      ${sel("dateFormat", "Date de récolte", s.dateFormat, [["roman", "20.viii.2020"], ["ROMAN", "20.VIII.2020"], ["iso", "2020-08-20"]], "s3")}
+      ${sel("capPt", "Texte de récolte par défaut", s.capPt || "auto", [["auto", "Remplir l'étiquette"], ...CAP_SIZES.map(n => [n, fr(n) + " pt"])], "s3", "Remplir : la plus grande taille qui tient dans la hauteur de l'étiquette")}
+      ${sel("capMinH", "Hauteur de l'étiquette de récolte", Number(s.capMinH ?? 15), [[0, "Selon le texte"], [15, "15 mm minimum"]], "s3", "À 15 mm, le texte est centré verticalement")}
+      <label class="check"><input type="checkbox" name="detYearOnly" ${s.detYearOnly ? "checked" : ""}> Identification : année seulement (« Dét. P. Paquin et N. Dupéré 2024 »)</label>
+      <label class="check"><input type="checkbox" name="printSample" ${s.printSample ? "checked" : ""}> Imprimer le code d'échantillon avant le numéro de l'étiquette de récolte</label>
+      ${sel("alcoolMonths", "Vérifier l'alcool après", Number(s.alcoolMonths || 12), [[6, "6 mois"], [12, "12 mois"], [24, "24 mois"]], "s3", "Depuis le dernier changement, la mise en alcool ou la récolte")}
+      <label class="check"><input type="checkbox" name="showFamily" ${s.showFamily ? "checked" : ""}> Imprimer la famille sous le nom d'espèce</label>
+      <div class="formacts"><button class="btn primary" type="submit">Enregistrer les réglages</button></div>
+    </form></section>
+    <section><h2>Sauvegarde</h2>
+      <p class="hint">${Store.mode === "db" ? "Le registre est enregistré dans votre compte et reste privé. Une copie exportée reste une bonne précaution." : `Le registre vit dans ce navigateur seulement. Dernière sauvegarde : ${esc(Local.lastText())}. Pour tout récupérer (autre ordinateur, autre navigateur, navigateur nettoyé), utilisez « Importer une sauvegarde ».`}</p>
+      <div class="btnrow">
+        <button class="btn" data-act="csv">Exporter en CSV</button>
+        <button class="btn" data-act="json">Exporter une sauvegarde (JSON)</button>
+        <label class="btn">Importer une sauvegarde<input type="file" id="importf" accept=".json,application/json" hidden></label>
+      </div>
+      <p class="hint" style="margin-top:10px">Le CSV s'ouvre dans Excel (séparateur point-virgule). L'import ajoute les spécimens absents sans toucher aux autres.</p>
+    </section></div>`;
+}
+
+/* ---------- actions ---------- */
+function startNew(){
+  const d = today();
+  state.editing = { id: newId(), no: nextNo(d.slice(0, 4)), dateCapture: d, flacon: VIALS[state.settings.flacon] ? state.settings.flacon : "10",
+    pays: state.settings.pays, region: "", leg: state.settings.leg,
+    localite: "", lat: "", lon: "", alt: "", milieu: "", microhab: "", moyen: "", photo: "", notes: "", identifie: false, capPt: state.settings.capPt || "auto" };
+  state.isNew = true; state.noTouched = false; state.mode = "capture"; state.view = "edit"; render(); window.scrollTo(0, 0);
+}
+function startEdit(id, mode){
+  const s = state.specimens.find(x => x.id === id); if (!s) return;
+  state.editing = clean(s);
+  state.editing.flacon = vialOf(s);
+  if (mode === "ident"){
+    if (!state.editing.det) state.editing.det = state.settings.det;
+    if (!state.editing.dateDet) state.editing.dateDet = today();
+    if (!state.editing.nombre) state.editing.nombre = 1;
+  }
+  state.isNew = false; state.mode = mode; state.view = "edit"; render(); window.scrollTo(0, 0);
+}
+async function saveEditor(form, andPrint){
+  if (state.saving) return;
+  readForm(form, state.editing);
+  const s = clean(state.editing), err = $("#ed-err"), ident = state.mode === "ident";
+  err.textContent = "";
+  if (!s.no){ err.textContent = "Le numéro est obligatoire."; return; }
+  if (state.specimens.some(x => x.no === s.no && x.id !== s.id)){ err.textContent = `Le numéro ${s.no} existe déjà.`; return; }
+  if (!ident && isTrap(s.moyen) && s.datePose && s.dateCapture && s.datePose > s.dateCapture){ err.textContent = "La date de pose doit précéder la date de relevé."; return; }
+  if (!ident && !isTrap(s.moyen)){ s.datePose = ""; s.trapLiquid = ""; }
+  if (ident){ s.identifie = !!(s.famille || s.genre); if (andPrint && !s.identifie){ err.textContent = "Entrez au moins le genre ou la famille avant d'imprimer."; return; } }
+  s.updated = new Date().toISOString();
+  if (state.isNew) s.created = s.updated;
+  state.saving = true; form.querySelectorAll("button").forEach(b => b.disabled = true);
+  try {
+    await Store.saveSpecimen(s);
+    await Store.verify(s);
+  } catch (e) {
+    const code = e && e.code ? ` (code : ${e.code})` : "";
+    err.textContent = e && e.code === "quota_exceeded" ? "Le registre est plein. Exportez puis supprimez d'anciens spécimens."
+      : `L'enregistrement a échoué${code}. Vos données sont encore dans le formulaire : réessayez, ou exportez une sauvegarde.`;
+    form.querySelectorAll("button").forEach(b => b.disabled = false);
+    state.saving = false;
+    return;
+  }
+  state.saving = false;
+  state.view = "list"; state.editing = null; render();
+  toast(`${s.no} enregistré`);
+  if (andPrint) printOne(s, ident ? "ident" : "capture");
+}
+async function printOne(s, kind){
+  if (state.printing){ toast(`${s.no} enregistré. Une impression est déjà en cours : utilisez « Imprimer » dans la liste ensuite.`); return; }
+  state.printing = true;
+  try { if (await printItems([{ kind, s }])) await markPrinted(s, kind); else toast(`${s.no} enregistré, étiquette non imprimée`); }
+  catch (e) { toast(`${s.no} enregistré, mais l'impression a échoué. Réessayez depuis la liste.`); }
+  finally { state.printing = false; if (state.view === "list") render(); }
+}
+function csvExport(){
+  const cols = [["no","Numéro"],["flacon","Flacon (ml)"],["dateCapture","Date récolte"],["pays","Pays et province"],["region","Région"],["localite","Localité"],["lat","Latitude"],["lon","Longitude"],["alt","Altitude"],["datePose","Date de pose"],["moyen","Méthode"],["nuit","Nuit"],["trapLiquid","Liquide du piège"],["effortVal","Effort"],["effortUnit","Unité d'effort"],["protocole","Protocole"],["echantillon","Code d'échantillon"],["microhab","Microhabitat"],["milieu","Habitat"],["leg","Récolteur"],["photo","Photo"],["famille","Famille"],["genre","Genre"],["espece","Espèce"],["auteur","Auteur"],["sexe","Sexe/stade"],["nombre","Nombre"],["det","Déterminateur"],["dateDet","Date identification"],["palpe","Palpe gauche détaché"],["epigyne","Épigyne prélevée"],["structAutre","Autres structures"],["stadeRecolte","Stade à la récolte"],["eleve","Élevé en captivité"],["dateAlcool","Mise en alcool"],["conservation","Liquide de conservation"],["emplacement","Emplacement"],["dateAlcoolChange","Dernier changement d'alcool"],["notes","Notes"]];
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [cols.map(c => q(c[1])).join(";")];
+  [...state.specimens].sort(byNo).forEach(s => lines.push(cols.map(([k]) => q(k === "sexe" ? (SEXES.find(x => x[0] === s.sexe) || ["", ""])[1] : (k === "flacon" ? vialOf(s) : (typeof s[k] === "boolean" ? (s[k] ? "oui" : "") : s[k])))).join(";")));
+  return "\ufeff" + lines.join("\r\n");
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === "tab"){ state.view = b.dataset.v; state.editing = null; state.confirmDelete = null; render(); }
+  else if (act === "new") startNew();
+  else if (act === "edit") startEdit(id, "capture");
+  else if (act === "ident") startEdit(id, "ident");
+  else if (act === "cancel"){ state.view = "list"; state.editing = null; render(); }
+  else if (act === "filter"){ state.filter = b.dataset.v; render(); }
+  else if (act === "del"){ state.confirmDelete = id; render(); }
+  else if (act === "del-no"){ state.confirmDelete = null; render(); }
+  else if (act === "del-yes"){ state.confirmDelete = null; try { await Store.deleteSpecimen(id); toast("Spécimen supprimé"); } catch (x) { toast("La suppression a échoué."); } render(); }
+  else if (act === "alcool"){
+    const s = state.specimens.find(x => x.id === id); if (!s) return;
+    await Store.patchSpecimen(s.id, { dateAlcoolChange: today() }); toast(`${s.no} : changement d'alcool noté`); render();
+  }
+  else if (act === "print-cap" || act === "print-id"){
+    const s = state.specimens.find(x => x.id === id); if (!s) return;
+    printOne(s, act === "print-id" ? "ident" : "capture");
+  }
+  else if (act === "free"){
+    const used = cardUsed(); state.undo = { used: cardUsed(), card: state.settings.card };
+    used.splice(Number(b.dataset.i), 1);
+    await saveUsed(used); render();
+  }
+  else if (act === "newcard"){ state.undo = { used: cardUsed(), card: state.settings.card }; await saveUsed([]); toast("Nouvelle carte : toute la surface est libre"); render(); }
+  else if (act === "undo" && state.undo){ await saveUsed(state.undo.used, state.undo.card); state.undo = null; toast("Carte remise dans son état précédent"); render(); }
+  else if (act === "template") printTemplate();
+  else if (act === "geo"){
+    const msg = $("#geo-msg");
+    if (!navigator.geolocation){ msg.textContent = "Position non disponible ici. Entrez les coordonnées à la main."; return; }
+    msg.textContent = "Recherche de la position…";
+    navigator.geolocation.getCurrentPosition(p => {
+      const fm = $("#ed"); if (!fm) return;
+      fm.elements.lat.value = p.coords.latitude.toFixed(4);
+      fm.elements.lon.value = p.coords.longitude.toFixed(4);
+      msg.textContent = `Précision d'environ ${Math.round(p.coords.accuracy)} m.`; updatePreview();
+    }, () => { msg.textContent = "Position refusée ou indisponible. Entrez les coordonnées à la main."; }, { enableHighAccuracy: true, timeout: 15000 });
+  }
+  else if (act === "csv"){ if (await offerFile(`registre-araignees-${today()}.csv`, csvExport(), "text/csv")) toast("CSV exporté"); }
+  else if (act === "json"){ if (await offerFile(`registre-araignees-${today()}.json`, JSON.stringify({ version: 3, exportedAt: new Date().toISOString(), settings: state.settings, specimens: state.specimens }, null, 2), "application/json")){ toast("Sauvegarde exportée"); if (Store.mode === "local") Local.backedUp(); if (state.view === "settings") render(); } }
+});
+
+let lastSubmitter = null;
+document.addEventListener("click", e => { const b = e.target.closest("button[type=submit]"); if (b) lastSubmitter = b; }, true);
+
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "search"){ state.search = t.value; const pos = t.selectionStart; render(); const s = $("#search"); s.focus(); s.setSelectionRange(pos, pos); return; }
+  if (t.closest("#ed")){
+    if (t.name === "no") state.noTouched = true;
+    if (t.name === "dateCapture" && state.isNew && !state.noTouched && /^\d{4}/.test(t.value)) $("#ed").elements.no.value = nextNo(t.value.slice(0, 4), state.editing.id);
+    updatePreview();
+  }
+});
+document.addEventListener("change", async e => {
+  const t = e.target;
+  if (t.dataset.set){
+    const k = t.dataset.set;
+    const v = k === "border" ? t.checked : (k === "copies" || k === "gap" ? parseInt(t.value, 10) : t.value);
+    try { await Store.saveSettings({ ...state.settings, [k]: v }); } catch (x) { toast("Le réglage n'a pas été enregistré."); }
+    if (state.view === "edit") updatePreview(); else render();
+    return;
+  }
+  if (t.closest("#ed") && t.tagName === "SELECT"){ updatePreview(); return; }
+  if (t.id === "importf" && t.files && t.files[0]){
+    try {
+      const d = JSON.parse(await t.files[0].text());
+      const list = Array.isArray(d) ? d : (d.specimens || []);
+      const have = new Set(state.specimens.map(s => s.id)), haveNo = new Set(state.specimens.map(s => s.no));
+      let added = 0, skipped = 0;
+      for (const s of list){
+        if (!s || !s.no || have.has(s.id) || haveNo.has(s.no)){ skipped++; continue; }
+        await Store.saveSpecimen({ ...s, id: s.id && /^[A-Za-z0-9_\-.~:@+]+$/.test(s.id) ? s.id : newId() });
+        added++;
+      }
+      toast(`${added} spécimen${added > 1 ? "s" : ""} importé${added > 1 ? "s" : ""}${skipped ? `, ${skipped} déjà présent${skipped > 1 ? "s" : ""}` : ""}`);
+    } catch (x) { toast("Ce fichier n'est pas une sauvegarde valide."); }
+    t.value = "";
+  }
+});
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (e.target.id === "ed"){
+    const sub = e.submitter || lastSubmitter;
+    saveEditor(e.target, !sub || sub.dataset.print !== "0");
+  } else if (e.target.id === "setf"){
+    const s = { ...state.settings }; readForm(e.target, s);
+    s.maxPt = parseFloat(s.maxPt) || 6; s.alcoolMonths = parseInt(s.alcoolMonths, 10) || 12; s.capMinH = parseFloat(s.capMinH) || 0; s.capPt = s.capPt === "auto" ? "auto" : (parseFloat(s.capPt) || "auto");
+    try { await Store.saveSettings(s); toast("Réglages enregistrés"); } catch (x) { toast("Les réglages n'ont pas été enregistrés."); }
+  }
+});
+
+renderTabs();
+Store.init();
+})();
+</script>
+</body>
+</html>
