@@ -2,7 +2,7 @@
 
 > **Version bêta (1.0.0-beta.1), en cours d'essai.** Utilisez d'abord des données fictives et exportez souvent une sauvegarde.
 
-Outil gratuit pour tenir le registre de spécimens d'araignées conservés en alcool et imprimer leurs étiquettes de récolte et d'identification, sur le modèle présenté dans *Les araignées du Québec* (Paquin 2026, fig. 27-28).
+Outil gratuit pour tenir le registre de spécimens d'araignées conservés en alcool et imprimer leurs étiquettes de récolte et d'identification, sur le modèle présenté par Paquin et Dupérré (2026, fig. 27-28). 
 
 **Ouvrir l'outil :** https://marclajoie123.github.io/registre-araignees/
 
@@ -14,7 +14,7 @@ Outil gratuit pour tenir le registre de spécimens d'araignées conservés en al
 - Suivi de la conservation (emplacement, changements d'alcool)
 - Export CSV (Excel) et sauvegarde complète
 
-## Confidentialité
+## Confidentialité et sécurité
 
 - Aucune donnée n'est envoyée : le registre est enregistré uniquement dans votre navigateur.
 - Une règle de sécurité (Content-Security-Policy) intégrée au fichier bloque toute connexion sortante.
@@ -22,6 +22,10 @@ Outil gratuit pour tenir le registre de spécimens d'araignées conservés en al
 - Le mode de navigation privée efface les données à la fermeture de la fenêtre : utilisez une fenêtre normale et exportez une sauvegarde régulièrement.
 
 Tout le code est dans le fichier `index.html`, lisible sans outil particulier.
+
+## Référence
+
+Pierre Paquin et Nadine Dupérré, 2026. *Les araignées du Québec*, Natureweb, avec Gilles Arbour et Catherine Dubois. 340 p.
 
 ## Versions
 
@@ -31,4 +35,5 @@ Tout le code est dans le fichier `index.html`, lisible sans outil particulier.
 
 ## Auteur
 
-Marc Lajoie. Outil conçu avec l'aide de Claude (Anthropic). Commentaires bienvenus dans l'onglet *Issues* de ce dépôt ou dans le groupe Facebook « Les araignées du Québec ».
+Marc Lajoie. Outil conçu avec l'aide de Claude (Anthropic). Commentaires bienvenus dans l'onglet *Issues* de ce dépôt ou dans le groupe privé Facebook [« Les araignées du Québec »](https://www.facebook.com/groups/486277948065390).
+
