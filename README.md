@@ -1,6 +1,6 @@
 # Registre des araignées
 
-> **Version bêta (1.0.0-beta.1), en cours d'essai.** Utilisez d'abord des données fictives et exportez souvent une sauvegarde.
+> **Version bêta (1.0.0-beta.2), en cours d'essai.** Utilisez d'abord des données fictives et exportez souvent une sauvegarde.
 
 Outil gratuit pour tenir le registre de spécimens d'araignées conservés en alcool et imprimer leurs étiquettes de récolte et d'identification, sur le modèle présenté par Paquin et Dupérré (2026, fig. 27-28).
 
@@ -35,6 +35,7 @@ Pierre Paquin et Nadine Dupérré, 2026. *Les araignées du Québec*, Natureweb,
 
 | Version | Date | Empreinte SHA-256 de `index.html` |
 |---|---|---|
+| 1.0.0-beta.2 | 30 septembre 2026 | `69759d12122900ca5beb433cbeec612f042876413f05cf986da015653c500d16` |
 | 1.0.0-beta.1 | 30 septembre 2026 | `c75a932f18f84325da791116b581f406ad71b7119b8d3ef22b971bbdfc124d27` |
 
 ## Auteur

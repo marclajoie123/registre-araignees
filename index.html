@@ -797,6 +797,19 @@ function moyenOptions(cur){
   if (cur && !MOYENS.includes(cur)) opts.push([cur, `${cur} (ancienne valeur)`]);
   return opts;
 }
+function parseCoords(str){
+  const t = String(str || "").trim().replace(/[′’']/g, "'").replace(/[″”"]|''/g, '"');
+  const dms = /(\d+(?:[.,]\d+)?)\s*°\s*(?:(\d+(?:[.,]\d+)?)\s*'\s*)?(?:(\d+(?:[.,]\d+)?)\s*"\s*)?([NSEOW])/gi;
+  const parts = [...t.matchAll(dms)];
+  if (parts.length === 2){
+    const val = m => { const d = +m[1].replace(",", "."), mi = +(m[2] || "0").replace(",", "."), se = +(m[3] || "0").replace(",", "."); const v = d + mi / 60 + se / 3600; return /[SWO]/i.test(m[4]) ? -v : v; };
+    const a = parts.find(m => /[NS]/i.test(m[4])), b = parts.find(m => /[EWO]/i.test(m[4]));
+    if (a && b) return { lat: val(a), lon: val(b) };
+  }
+  const nums = t.split(/\s*;\s*|,\s+|\s+/).map(x => x.replace(",", ".")).filter(x => /^-?\d+(\.\d+)?$/.test(x)).map(Number);
+  if (nums.length === 2 && Math.abs(nums[0]) <= 90 && Math.abs(nums[1]) <= 180) return { lat: nums[0], lon: nums[1] };
+  return null;
+}
 function effortOptions(m, cur){
   const units = EFFORT_UNITS(m), c = units.includes(cur) ? cur : units[0];
   return units.map(u => `<option value="${esc(u)}" ${u === c ? "selected" : ""}>${esc(u)}</option>`).join("");
@@ -825,7 +838,7 @@ function editorHTML(){
         ${f("region", "Région", s.region, { cls: "s4", list: "dl-region", attrs: 'placeholder="Haute-Côte-Nord"' })}
         ${f("localite", "Localité", s.localite, { cls: "s4", list: "dl-localite", attrs: 'placeholder="Grandes-Bergeronnes"' })}
         ${f("photo", "Photo", s.photo, { cls: "s2", help: "Fichier, facultatif", attrs: 'spellcheck="false"' })}
-        ${f("lat", "Latitude", s.lat, { cls: "s2", attrs: 'inputmode="decimal" placeholder="48.2335"' })}
+        ${f("lat", "Latitude", s.lat, { cls: "s2", attrs: 'inputmode="decimal" placeholder="48.2335"', help: "On peut y coller « lat, long »" })}
         ${f("lon", "Longitude", s.lon, { cls: "s2", attrs: 'inputmode="decimal" placeholder="-69.3222"' })}
         ${f("alt", "Altitude (m)", s.alt, { cls: "s2", attrs: 'inputmode="numeric"', help: "Facultatif" })}
         <div class="check"><button type="button" class="link" data-act="geo">Utiliser ma position actuelle</button><span id="geo-msg" class="meta"></span></div>
@@ -943,7 +956,7 @@ function cardHTML(){
   <div><div class="card-sheet" style="width:${c.W*pxmm}px;height:${c.H*pxmm}px">${cells}<span class="feed">Bord d'entrée ↑</span></div></div></section>`;
 }
 
-const VERSION = "1.0.0-beta.1";
+const VERSION = "1.0.0-beta.2";
 function aboutHTML(){
   return `<div class="settings about">
     <section><h2>À propos et confidentialité</h2>
@@ -1086,14 +1099,25 @@ document.addEventListener("click", async e => {
   else if (act === "template") printTemplate();
   else if (act === "geo"){
     const msg = $("#geo-msg");
-    if (!navigator.geolocation){ msg.textContent = "Position non disponible ici. Entrez les coordonnées à la main."; return; }
+    const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+    const paste = " Vous pouvez aussi coller les coordonnées dans le champ Latitude (par exemple « 46.7130, -71.5450 » copié de Google Maps).";
+    if (!navigator.geolocation){ msg.textContent = "Ce navigateur ne donne pas accès à la position." + paste; return; }
+    if (window.isSecureContext === false){ msg.textContent = "La localisation exige une page sécurisée (https). Ouvrez l'outil depuis son adresse GitHub Pages." + paste; return; }
     msg.textContent = "Recherche de la position…";
     navigator.geolocation.getCurrentPosition(p => {
       const fm = $("#ed"); if (!fm) return;
       fm.elements.lat.value = p.coords.latitude.toFixed(4);
       fm.elements.lon.value = p.coords.longitude.toFixed(4);
-      msg.textContent = `Précision d'environ ${Math.round(p.coords.accuracy)} m.`; updatePreview();
-    }, () => { msg.textContent = "Position refusée ou indisponible. Entrez les coordonnées à la main."; }, { enableHighAccuracy: true, timeout: 15000 });
+      msg.textContent = `Position trouvée, précision d'environ ${Math.round(p.coords.accuracy)} m.`; updatePreview();
+    }, e => {
+      let t;
+      if (e && e.code === 1){
+        t = "Accès à la position refusé. Autorisez la localisation pour cette page (icône à gauche de l'adresse du site). Sur Mac, vérifiez aussi que votre navigateur est autorisé dans Réglages Système › Confidentialité et sécurité › Service de localisation.";
+        if (framed) t += " Si l'outil est affiché dans une autre page (par exemple dans Claude), ce cadre peut bloquer la position : ouvrez-le directement à son adresse.";
+      } else if (e && e.code === 3) t = "La recherche de la position a pris trop de temps. Réessayez, idéalement près d'une fenêtre ou avec le Wi-Fi activé.";
+      else t = "Position introuvable. Sur un ordinateur, le Wi-Fi doit être activé : c'est lui qui permet de situer l'appareil.";
+      msg.textContent = t + paste;
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
   }
   else if (act === "csv"){ if (await offerFile(`registre-araignees-${today()}.csv`, csvExport(), "text/csv")) toast("CSV exporté"); }
   else if (act === "json"){ if (await offerFile(`registre-araignees-${today()}.json`, JSON.stringify({ version: 3, exportedAt: new Date().toISOString(), settings: state.settings, specimens: state.specimens }, null, 2), "application/json")){ toast("Sauvegarde exportée"); if (Store.mode === "local") Local.backedUp(); if (state.view === "settings") render(); } }
@@ -1107,6 +1131,10 @@ document.addEventListener("input", e => {
   if (t.id === "search"){ state.search = t.value; const pos = t.selectionStart; render(); const s = $("#search"); s.focus(); s.setSelectionRange(pos, pos); return; }
   if (t.closest("#ed")){
     if (t.name === "no") state.noTouched = true;
+    if (t.name === "lat" && /[\s;°]|,\s/.test(t.value)){
+      const c = parseCoords(t.value);
+      if (c){ const fm = $("#ed"); fm.elements.lat.value = c.lat.toFixed(4); fm.elements.lon.value = c.lon.toFixed(4); const gm = $("#geo-msg"); if (gm) gm.textContent = "Coordonnées collées et converties."; }
+    }
     if (t.name === "dateCapture" && state.isNew && !state.noTouched && /^\d{4}/.test(t.value)) $("#ed").elements.no.value = nextNo(t.value.slice(0, 4), state.editing.id);
     updatePreview();
   }
